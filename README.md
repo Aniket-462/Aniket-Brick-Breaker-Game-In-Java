@@ -1,251 +1,269 @@
-# Aniket-Brick-Breaker-Game-In-Java
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import javax.swing.*;
 
-import java.util.*;
-import java.io.*;
-public class BB extends JFrame implements ActionListener{
-  private GamePanel game;						
-	private javax.swing.Timer myTimer;			
-	JLabel bg, score, lives, level;				
-	public BB(){
-		super("Brick Breaker");
-	  setLayout(null);
-		setSize(800,600);
-		game = new GamePanel();
-		game.setSize(500, 500);
-		game.setLocation(25,25);
-		add(game);
-		Font f = new Font("Bebas Neue", Font.PLAIN, 60);		
-		level = new JLabel("Level 1");			
-		level.setFont(f);
-		level.setForeground(Color.WHITE);
-        level.setSize(300,100);
-        level.setLocation(585,50);
-        add(level);
-    score = new JLabel("Score: 0");
-		score.setFont(f);
-		score.setForeground(Color.WHITE);
-        score.setSize(300,100);
-        score.setLocation(575,150);
-        add(score);
-        lives = new JLabel("Lives: 3");
-		lives.setFont(f);
-		lives.setForeground(Color.WHITE);
-        lives.setSize(300,100);
-        lives.setLocation(580,250);
-        add(lives);
-  	bg = new JLabel(new ImageIcon("bbg.png"));				
-		bg.setSize(800,600);
-		add(bg);
-setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);			
-		setVisible(true);										
-		myTimer = new javax.swing.Timer(10,this);				
-		myTimer.start();
-	}
- public void actionPerformed(ActionEvent e){
-		game.update(myTimer);
-		score.setText("Score: "+Integer.toString(game.getScore()));			
-		lives.setText("Lives: "+Integer.toString(game.getLives()));
-		level.setText("Level "+Integer.toString(game.getLVL()));
-		}
-	public static void main(String[] args){
-			new MainMenu();
-	}
-}
-class GamePanel extends JPanel implements KeyListener{
-	Brick[] bricks;					
-	Paddle paddle;					
-	Ball ball;						
-	ArrayList<PowerUp> pUps;		
-	boolean[] keys;					
-	boolean started;				
-	private int level, lives, score, left;		public GamePanel(){
-	super();
-		ball = new Ball(245, 450);
-		paddle = new Paddle(220, 475);
-		pUps = new ArrayList<PowerUp>();
-		bricks = load(1);					
-  	keys = new boolean[2000];
-  	started = false;
-		lives = 3;							
-		score = 0;
-		left = bricks.length;				
-		addKeyListener(this);				
-        this.setFocusable(true);
-        this.grabFocus();
-			}
-		public Brick[] load(int lvl){		
-			Scanner inFile=null;		
-		try{		
-    			inFile = new Scanner (new BufferedReader (new FileReader("bricks"+Integer.toString(lvl-1)+".txt")));
-    	} catch(IOException ex){
-			System.out.println("File not available"+ex);
-			System.exit(0);
-				}
-			String[] p = new String[] {"","","","","","","","","","","","","","shrink","expand","life","life","life","fast","slow"};	
-		Brick[] temp = new Brick[16];								for(int i = 0; i < temp.length; i++){										
-            Brick b;
-            int r = (int)(Math.random()*p.length);									
-            int hp = (int)(Math.random()*3);										
-             b = new Brick(inFile.nextInt(), inFile.nextInt(), hp+1, p[r]);			
-	        temp[i] = b;
-	        pUps.add(new PowerUp(b.getX(), b.getY(), p[r]));						
-         }
-      return temp;															}
-	private void checkContact(){
-		  if(ball.getX() + 10 >= 500 || ball.getX() <= 0){
-            ball.setDX(-1 * ball.getDX());
-        }
-            ball.setDY(-1 * ball.getDY());
-        }
-        if(ball.getY() + 10 >= paddle.getY() && (ball.getX() >= paddle.getX() && ball.getX() <= (paddle.getX() + 60))){
-            if(ball.getY() + 10 <= paddle.getY() + 10){
-            double ballPos = ball.getX() - paddle.getX();			
-				double newx = (ballPos/paddle.getWidth()) - .5;			
-				ball.setDX(newx*5);										
-				ball.setDY(-1 * ball.getDY());
+public class BrickBreaker extends JFrame implements ActionListener {
+    private static final int WIDTH = 800;
+    private static final int HEIGHT = 600;
+    private static final int PADDLE_WIDTH = 100;
+    private static final int PADDLE_HEIGHT = 20;
+    private static final int BALL_DIAMETER = 20;
+    private static final int BRICK_WIDTH = 80;
+    private static final int BRICK_HEIGHT = 30;
+    private static final int PADDLE_SPEED = 10;
+    private static final int BALL_SPEED = 5;
+    private static final int NUM_ROWS = 5;
+    private static final int NUM_COLS = 10;
+
+    private JPanel gamePanel;
+    private Timer timer;
+    private Paddle paddle;
+    private Ball ball;
+    private Brick[][] bricks;
+    private int score;
+
+    public BrickBreaker() {
+        setTitle("Brick Breaker");
+        setSize(WIDTH, HEIGHT);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        score = 0;
+
+        gamePanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                draw(g);
+            }
+        };
+        gamePanel.setBackground(Color.BLACK);
+        setContentPane(gamePanel);
+        gamePanel.setLayout(null); // Using null layout for simplicity
+
+        paddle = new Paddle((WIDTH - PADDLE_WIDTH) / 2, HEIGHT - 100);
+        ball = new Ball(WIDTH / 2 - BALL_DIAMETER / 2, HEIGHT / 2 - BALL_DIAMETER / 2);
+
+        bricks = new Brick[NUM_ROWS][NUM_COLS];
+        int brickWidthWithGap = BRICK_WIDTH + 2; // gap between bricks
+        int brickHeightWithGap = BRICK_HEIGHT + 2;
+        for (int i = 0; i < NUM_ROWS; i++) {
+            for (int j = 0; j < NUM_COLS; j++) {
+                bricks[i][j] = new Brick(j * brickWidthWithGap + 30, i * brickHeightWithGap + 50, BRICK_WIDTH, BRICK_HEIGHT);
             }
         }
-        if(ball.getY() + 10 > paddle.getY() + 10){
-   			lives-=1;
-   			reset();					
+
+        timer = new Timer(20, this);
+        timer.start();
+
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                paddle.keyPressed(e);
             }
-        for(Brick b: bricks){
-         if(ball.getX() + 10 >= b.getX() && ball.getX() <= b.getX() + 55){
-            	 if(ball.getY() + 10 >= b.getY() && ball.getY() <= b.getY() + 20){
-                	if(b.getHP()>0){ if(ball.getX() + 10 - ball.getDX() <= b.getX() || ball.getX() - ball.getDX() >= b.getX() + 55){
-ball.setDX(-1 * ball.getDX());
-b.setHP(b.getHP()-1);
-}
-else
-{
-ball.setDY(-1 * ball.getDY());
-b.setHP(b.getHP()-1);
-} 
-score += b.getHP()*5;
-    } 
-  }
-}
-if(b.getHP()<=0);
-for (PowerUp p: pUps){										if (p.getX()==b.getX() && p.getY()==b.getY()){
-p.setDY(3);
-p.setAct(true);
-}
-}
-}
-}
-for (PowerUp p: pUps){										if ((p.getX()+50>paddle.getX() && p.getX()<=paddle.getX()+paddle.getWidth()) && p.getY()+20>=paddle.getY() && p.getY()<=paddle.getY()+10){					
-				paddle.setpUp(p.getName());
-				score += 50;
-			}
-		}
-int temp = 0;
-for(Brick b: bricks){										
-			if(b.getHP()> 0){
-				temp ++;
-			}
-		}
-left = temp;
-        if(left == 0)
-        {
-        	level++;
-if(level>3){						
-          	new MainMenu();
-            	setVisible(false);
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                paddle.keyReleased(e);
             }
-reset();		
+        });
+        setFocusable(true);
+        requestFocusInWindow();
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        update();
+        checkCollision();
+        repaint();
+    }
+
+    private void update() {
+        paddle.move();
+        ball.move();
+    }
+
+    private void checkCollision() {
+        // Ball with paddle
+        if (ball.getBounds().intersects(paddle.getBounds())) {
+            ball.setDY(-BALL_SPEED);
         }
-  if(lives <= 0){
-  new LoseFrame();
-        	setVisible(false);
-         }
-	 }
- public void reset(){
-		ball.setX(245);
-        ball.setY(460);
-        ball.setDX(0);
-        ball.setDY(0);
-       paddle.setX(220);
-        paddle.setY(475);
-         	score = 0;
-      		if(lives>0){					
-      		pUps.clear();				
-      	 bricks = load(level+1);
-      		score += 10;
-      			}
-else
-{							
-  	new MainMenu();
-    setVisible(false);
-    }
-    started = false;
-    }
-	public void keyPressed(KeyEvent event){		  	int i = event.getKeyCode();
-    	keys[i] = true;
-    }
-public void keyReleased(KeyEvent evt){
-		int i = evt.getKeyCode();
-		keys[i]=false;
-	public void keyTyed(keyEvent evt)
-	{}	
-	}
-public void paintComponent(Graphics g){
-g.setColor(new Color(222,222,222));			g.fillRect(0,0,getWidth(),getHeight());  for(Brick b: bricks){
-if(b.getHP()>0){
-g.drawImage(b.getImg(), b.getX(), b.getY(), this);
+
+        // Ball with bricks
+        for (int i = 0; i < NUM_ROWS; i++) {
+            for (int j = 0; j < NUM_COLS; j++) {
+                Brick b = bricks[i][j];
+                if (b.isVisible() && ball.getBounds().intersects(b.getBounds())) {
+                    b.setVisible(false);
+                    score += 10;
+                    ball.setDY(-ball.getDY());
+                }
             }
         }
-for (PowerUp p: pUps){
-        	if (!p.getUse() && p.getAct()){
-        		if (p.getY()<550 && !p.getName().equals("")){
-        			g.drawImage(p.getImage(), p.getX(), p.getY(), this);
-        		}	        		
-        	}
+    }
+
+    private void draw(Graphics g) {
+        // Draw paddle
+        g.setColor(Color.WHITE);
+        g.fillRect(paddle.getX(), paddle.getY(), PADDLE_WIDTH, PADDLE_HEIGHT);
+
+        // Draw ball
+        g.setColor(Color.RED);
+        g.fillOval((int) ball.getX(), (int) ball.getY(), BALL_DIAMETER, BALL_DIAMETER);
+
+        // Draw bricks
+        for (int i = 0; i < NUM_ROWS; i++) {
+            for (int j = 0; j < NUM_COLS; j++) {
+                Brick b = bricks[i][j];
+                if (b.isVisible()) {
+                    g.setColor(Color.BLUE);
+                    g.fillRect(b.getX(), b.getY(), b.getWidth(), b.getHeight());
+                    g.setColor(Color.BLACK);
+                    g.drawRect(b.getX(), b.getY(), b.getWidth(), b.getHeight());
+                }
+            }
         }
-g.setColor(Color.BLACK);
-g.fillRect(paddle.getX(), paddle.getY(), paddle.getWidth(), 10);
-g.drawImage(ball.getImage(),(int)(ball.getX()), (int)(ball.getY()), this);
+
+        // Draw score
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.drawString("Score: " + score, 20, 30);
     }
-public void update(javax.swing.Timer mT){
-if(keys[KeyEvent.VK_H]){		
-    		mT.stop();					
-    		new HelpFrame();
-    		setVisible(false);
-    			}
-if(keys[KeyEvent.VK_M]){		
-    		mT.stop();					
-    		new MainMenu();
-    		setVisible(false);
-  }
-if(!started){						
-if(keys[KeyEvent.VK_SPACE]){	
-int i = (int)(Math.random()*6);		
-    			ball.setDX(i);
-    			ball.setDY(-5);
-    			started = true;					
-}
-}
-else
-{
-    		checkContact();							
-    		paddle.move(keys);						
-    		paddle.powerUse(lives, ball);			
-    		ball.move();							
-    		for(PowerUp p: pUps){					
-    		p.move();
-    		}
-    			repaint();								
-}
-}
-public int getLVL(){
-    	return level;
+
+    private class Paddle {
+        private int x, y;
+        private int dx;
+
+        public Paddle(int x, int y) {
+            this.x = x;
+            this.y = y;
+            dx = 0;
+        }
+
+        public void move() {
+            x += dx;
+            if (x < 0) {
+                x = 0;
+            } else if (x + PADDLE_WIDTH > WIDTH) {
+                x = WIDTH - PADDLE_WIDTH;
+            }
+        }
+
+        public void keyPressed(KeyEvent e) {
+            int key = e.getKeyCode();
+            if (key == KeyEvent.VK_LEFT) {
+                dx = -PADDLE_SPEED;
+            } else if (key == KeyEvent.VK_RIGHT) {
+                dx = PADDLE_SPEED;
+            }
+        }
+
+        public void keyReleased(KeyEvent e) {
+            int key = e.getKeyCode();
+            if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_RIGHT) {
+                dx = 0;
+            }
+        }
+
+        public Rectangle getBounds() {
+            return new Rectangle(x, y, PADDLE_WIDTH, PADDLE_HEIGHT);
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public int getY() {
+            return y;
+        }
     }
-public int getLives(){
-    	return lives;
+
+    private class Ball {
+        private double x, y;
+        private double dx, dy;
+
+        public Ball(double x, double y) {
+            this.x = x;
+            this.y = y;
+            dx = dy = BALL_SPEED;
+        }
+
+        public void move() {
+            x += dx;
+            y += dy;
+
+            // Check boundaries
+            if (x < 0 || x > WIDTH - BALL_DIAMETER) {
+                dx = -dx;
+            }
+            if (y < 0 || y > HEIGHT - BALL_DIAMETER) {
+                dy = -dy;
+            }
+        }
+
+        public Rectangle getBounds() {
+            return new Rectangle((int) x, (int) y, BALL_DIAMETER, BALL_DIAMETER);
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+
+        public void setDY(double dy) {
+            this.dy = dy;
+        }
+
+        public double getDY() {
+            return dy;
+        }
     }
-public int getScore(){
-    	return score;
+
+    private class Brick {
+        private int x, y;
+        private int width, height;
+        private boolean visible;
+
+        public Brick(int x, int y, int width, int height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            visible = true;
+        }
+
+        public Rectangle getBounds() {
+            return new Rectangle(x, y, width, height);
+        }
+
+        public boolean isVisible() {
+            return visible;
+        }
+
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public int getWidth() {
+            return width;
+        }
+
+        public int getHeight() {
+            return height;
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new BrickBreaker().setVisible(true));
     }
 }
